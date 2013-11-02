@@ -44,10 +44,12 @@
  */
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
 using System.Text;
+using System.Reflection;
 
 using OpenSim.Framework;
 using OpenSim.Region.Framework.Interfaces;
@@ -614,11 +616,11 @@ public abstract class SyncMsgOSDMapData : SyncMsg
         IClientAPI client = new RegionSyncAvatar(acd.circuitcode, RegionContext.Scene, acd.AgentID, acd.firstname, acd.lastname, currentPos);
         try
         {
-            SyncInfo.SceneThing = RegionContext.Scene.AddNewClient(client, pt);
+            SyncInfo.SceneThing = RegionContext.Scene.AddNewAgent(client, pt);
         }
         catch (Exception e)
         {
-            m_log.WarnFormat("{0}: Exception in AddNewClient: {1}", LogHeader, e.ToString());
+            m_log.WarnFormat("{0}: Exception in AddNewAgent: {1}", LogHeader, e.ToString());
         }
 
         // Fix body rotation
@@ -775,31 +777,19 @@ public abstract class SyncMsgOSDMapData : SyncMsg
             sog.IsAttachment = data["IsAttachment"].AsBoolean();
             sog.AttachedAvatar = data["AttachedAvatar"].AsUUID();
             uint ap = data["AttachmentPoint"].AsUInteger();
-            if (ap != null)
+            if (sog.RootPart == null)
             {
-                if (sog.RootPart == null)
-                {
-                    //m_log.WarnFormat("{0} DecodeSceneObject - ROOT PART IS NULL", LogHeader);
-                }
-                else if (sog.RootPart.Shape == null)
-                {
-                    //m_log.WarnFormat("{0} DecodeSceneObject - ROOT PART SHAPE IS NULL", LogHeader);
-                }
-                else
-                {
-                    sog.AttachmentPoint = ap;
-                    //m_log.WarnFormat("{0}: DecodeSceneObject AttachmentPoint = {1}", LogHeader, sog.AttachmentPoint);
-                }
+                //m_log.WarnFormat("{0} DecodeSceneObject - ROOT PART IS NULL", LogHeader);
             }
-            // Currently, when objects cross the script state is destroyed. This snippet can save the script state, but must r
-            /*
-            if (data.ContainsKey("ScriptState"))
+            else if (sog.RootPart.Shape == null)
             {
-                XmlDocument doc = new XmlDocument();
-                doc.LoadXml(data["ScriptState"].AsString());
-                sog.LoadScriptState(doc);
+                //m_log.WarnFormat("{0} DecodeSceneObject - ROOT PART SHAPE IS NULL", LogHeader);
             }
-             */
+            else
+            {
+                sog.AttachmentPoint = ap;
+                //m_log.WarnFormat("{0}: DecodeSceneObject AttachmentPoint = {1}", LogHeader, sog.AttachmentPoint);
+            }
         }
         catch (Exception e)
         {
@@ -1089,19 +1079,9 @@ public class SyncMsgUpdatedProperties : SyncMsgOSDMapData
         if (base.ConvertIn(pRegionContext))
         {
             ret = true;
-            // Decode synced properties from the message
+            // Decode synced properties from the message. never null.
             SyncedProperties = SyncInfoBase.DecodeSyncedProperties(DataMap);
-            if (SyncedProperties == null)
-            {
-                m_log.ErrorFormat("{0} UpdatedProperties.ConvertIn could not get syncedProperties", LogHeader);
-                ret = false;
-            }
             Uuid = DataMap["uuid"].AsUUID();
-            if (Uuid == null)
-            {
-                m_log.ErrorFormat("{0} UpdatedProperties.ConvertIn could not get UUID!", LogHeader);
-                ret = false;
-            }
         }
         else
         {
@@ -1119,6 +1099,8 @@ public class SyncMsgUpdatedProperties : SyncMsgOSDMapData
                 // Update local sync info and scene object/presence
                 pRegionContext.RememberLocallyGeneratedEvent(MType);
                 HashSet<SyncableProperties.Type> propertiesUpdated = pRegionContext.InfoManager.UpdateSyncInfoBySync(Uuid, SyncedProperties);
+                if (propertiesUpdated.Contains(RegionSync.SyncableProperties.Type.AvatarAppearance))
+                    m_log.DebugFormat("{0} SyncMsgUpdatedProperties:HandleIn AvatarAppearance for uuid {1}", LogHeader, Uuid);
                 pRegionContext.ForgetLocallyGeneratedEvent();
 
                 // Do our own detail logging after we know which properties are actually updated (in propertiesUpdated)
@@ -2914,37 +2896,34 @@ public class SyncMsgUpdateScript : SyncMsgEvent
     {
         if (base.HandleIn(pRegionContext))
         {
-            //trigger the event in the local scene
-            
             ArrayList errors = new ArrayList();
             if (PrimID != UUID.Zero)
             {
                 SceneObjectPart sop = pRegionContext.Scene.GetSceneObjectPart(PrimID);
-                // If Scene Object Part for prim is not here, just return.
-                if (sop == null)
-                    return true;
-                TaskInventoryItem taskItem = sop.Inventory.GetInventoryItem(ItemID);
-                taskItem.AssetID = AssetID;
-                sop.ParentGroup.UpdateInventoryItem(taskItem);
-                if (IsRunning)
+                if (sop != null)
                 {
-                    sop.Inventory.RemoveScriptInstance(ItemID, false);
-                    sop.Inventory.CreateScriptInstance(ItemID, 0, false, pRegionContext.Scene.DefaultScriptEngine, 0);
-                    errors = sop.Inventory.GetScriptErrors(ItemID);
+                    TaskInventoryItem taskItem = sop.Inventory.GetInventoryItem(ItemID);
+                    taskItem.AssetID = AssetID;
+                    sop.ParentGroup.UpdateInventoryItem(taskItem);
+                    if (IsRunning)
+                    {
+                        // Scripts are recreated when edited so replace the new script inventory item
+                        sop.Inventory.RemoveScriptInstance(ItemID, false);
+                        sop.Inventory.CreateScriptInstance(ItemID, 0, false, pRegionContext.Scene.DefaultScriptEngine, 0);
+                        errors = sop.Inventory.GetScriptErrors(ItemID);
+                    }
+                    sop.ParentGroup.ResumeScripts();
+                    if (errors.Count > 0)
+                    {
+                        m_log.ErrorFormat("{0} Script errors detected. TODO: Send errors back to actor that created script", LogHeader);
+                    }
+
+                    //trigger the event in the local scene
+                    pRegionContext.RememberLocallyGeneratedEvent(MsgType.UpdateScript, AgentID, ItemID, PrimID, IsRunning, AssetID);
+                    pRegionContext.Scene.EventManager.TriggerUpdateScript(AgentID, ItemID, PrimID, IsRunning, AssetID);
+                    pRegionContext.ForgetLocallyGeneratedEvent();
                 }
-                sop.ParentGroup.ResumeScripts();
-                
             }
-            else if (AgentID != UUID.Zero)
-            {
-                pRegionContext.ForgetLocallyGeneratedEvent();
-                throw new Exception("No prim ID in update script; Agent script updated unimplemented.");
-            }
-            if (errors.Count > 0)
-                m_log.ErrorFormat("{0}: Script errors detected! TODO: Send errors back to actor who created script", LogHeader);
-            pRegionContext.RememberLocallyGeneratedEvent(MsgType.UpdateScript, AgentID, ItemID, PrimID, IsRunning, AssetID);
-            pRegionContext.Scene.EventManager.TriggerUpdateScript(AgentID, ItemID, PrimID, IsRunning, AssetID);
-            pRegionContext.ForgetLocallyGeneratedEvent();
         }
         return true;
     }
@@ -3063,14 +3042,8 @@ public class SyncMsgChatFromClient : SyncMsgEvent
         bool ret = false;
         if (base.HandleIn(pRegionContext))
         {
-            //m_log.WarnFormat("RegionSyncModule.HandleRemoteEvent_OnChatFromClient {0}:{1}", args.From, args.Message);
-            if (ChatMessage.Sender == null)
-            {
-                // Quark note: It is possible that the message comes from a quark this actor does not subscribe to. The OnChatFromClient should
-                // be responsible to handle cases where sender is null (e.g. IRC chat message). 
-                pRegionContext.Scene.EventManager.TriggerOnChatFromClient(null, ChatMessage);
-            }
-            else if (ChatMessage.Sender is RegionSyncAvatar)
+            m_log.DebugFormat("{0} SyncMsgChatFromClient: {1} : {2}", LogHeader, ChatMessage.From, ChatMessage.Message);
+            if (ChatMessage.Sender is RegionSyncAvatar)
                 ((RegionSyncAvatar)ChatMessage.Sender).SyncChatFromClient(ChatMessage);
             
             ret = true;
@@ -3122,7 +3095,7 @@ public class SyncMsgChatFromWorld : SyncMsgEvent
     {
         if (base.HandleIn(pRegionContext))
         {
-            //m_log.WarnFormat("RegionSyncModule.HandleRemoteEvent_OnChatFromWorld {0}:{1}", args.From, args.Message);
+            m_log.DebugFormat("{0} SyncMsgChatFromWorld: {1} : {2}", LogHeader, ChatMessage.From, ChatMessage.Message);
             pRegionContext.RememberLocallyGeneratedEvent(MsgType.ChatFromWorld, ChatMessage);
             // Let ChatModule get the event and deliver it to avatars
             pRegionContext.Scene.EventManager.TriggerOnChatFromWorld(ChatMessage.SenderObject, ChatMessage);
@@ -3175,7 +3148,7 @@ public class SyncMsgChatBroadcast : SyncMsgEvent
     {
         if (base.HandleIn(pRegionContext))
         {
-            //m_log.WarnFormat("RegionSyncModule.HandleRemoteEvent_OnChatBroadcast {0}:{1}", args.From, args.Message);
+            m_log.DebugFormat("{0} SyncMsgChatBroadcast: {1} : {2}", LogHeader, ChatMessage.From, ChatMessage.Message);
             pRegionContext.RememberLocallyGeneratedEvent(MsgType.ChatBroadcast, ChatMessage);
             pRegionContext.Scene.EventManager.TriggerOnChatBroadcast(ChatMessage.SenderObject, ChatMessage);
             pRegionContext.ForgetLocallyGeneratedEvent();

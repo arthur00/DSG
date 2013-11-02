@@ -2612,6 +2612,7 @@ namespace DSG.RegionSync
         private void OnLocalChatBroadcast(Object sender, OSChatMessage chat)
         {
             
+            m_log.DebugFormat("{0} OnLocalChatBroadcast: {1}: {2}", LogHeader, chat.From, chat.Message);
             if (IsLocallyGeneratedEvent(SyncMsg.MsgType.ChatBroadcast, sender, chat))
                 return;
 
@@ -2635,6 +2636,7 @@ namespace DSG.RegionSync
             if (IsLocallyGeneratedEvent(SyncMsg.MsgType.ChatFromWorld, sender, chat))
                 return;
 
+            m_log.DebugFormat("{0} OnLocalChatFromWorld: {1}: {2}", LogHeader, chat.From, chat.Message);
             //m_log.WarnFormat("RegionSyncModule.OnLocalChatFromWorld {0}:{1}", chat.From, chat.Message);
             SyncMsgChatFromWorld msg = new SyncMsgChatFromWorld(this, chat);
             SendSceneEvent(msg, SyncQuark.GetQuarkNameByPosition(chat.Position));
@@ -3187,6 +3189,7 @@ namespace DSG.RegionSync
             
             //Enqueue the set of changed properties
             EnqueueUpdatedProperty(uuid, propertiesWithSyncInfoUpdated);
+            m_log.DebugFormat("{0}: OnAvatarAppearanceChange enqueued updated AvatarAppearance property for uuid {1}", LogHeader, uuid);
         }
 
         private void OnScenePresenceUpdated(ScenePresence sp)
@@ -3216,7 +3219,9 @@ namespace DSG.RegionSync
 
             //Enqueue the set of changed properties
             EnqueueUpdatedProperty(uuid, propertiesWithSyncInfoUpdated);
-            //m_log.Warn("OnScenePresenceUpdated C");
+
+            if(propertiesWithSyncInfoUpdated.Contains(SyncableProperties.Type.AvatarAppearance))
+                m_log.DebugFormat("{0}: OnScenePresenceUpdated enqueued updated AvatarAppearance property for uuid {1}", LogHeader, uuid);
         }
 
         #endregion //Presence Property Sync management
