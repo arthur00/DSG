@@ -624,14 +624,25 @@ public abstract class SyncMsgOSDMapData : SyncMsg
         }
 
         // Fix body rotation
-        ScenePresence sp = RegionContext.Scene.GetScenePresence(SyncInfo.UUID);
+        //ScenePresence sp = RegionContext.Scene.GetScenePresence(SyncInfo.UUID);
+        ScenePresence sp = (ScenePresence)SyncInfo.SceneThing; 
         sp.Rotation = bodyDirection;
 
         // Fix flying state (when crossing)
         if (sp.PhysicsActor != null)
             sp.Flying = flyState;
-        // Maybe this should be the "real" region UUID but I don't think it will matter until we understand better how teleporting in DSG will work
-        ((ScenePresence)SyncInfo.SceneThing).m_originRegionID = RegionContext.Scene.RegionInfo.RegionID;
+        // SOME UNFORTUNATE REFLECTION IS REQUIRED TO GET THIS PRESENCE CREATED
+        {
+            // m_originRegionID is a private instance member of ScenePresence
+            BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Instance;
+
+            // Get the field info instance corresponding to m_originRegionID
+            FieldInfo field = typeof(ScenePresence).GetField("m_originRegionID", flags);
+
+            // Set the value to the current scene
+            field.SetValue(sp, RegionContext.Scene.RegionInfo.RegionID);
+        }
+
         // Now that we have a presence and a client, tell the region sync "client" to finish connecting. 
         ((RegionSyncAvatar)client).PostCreateRegionSyncAvatar();
 
@@ -2407,7 +2418,7 @@ public class SyncMsgRemovedPresence : SyncMsgOSDMapData
             // eventually become a remove object sync message. We need to remember this.
             pRegionContext.RememberLocallyGeneratedEvent(SyncMsg.MsgType.RemovedPresence, Uuid);
             //pRegionContext.Scene.RemoveClient(Uuid, false);
-            pRegionContext.Scene.IncomingCloseAgent(Uuid, true);
+            pRegionContext.Scene.CloseAgent(Uuid, true);
             pRegionContext.ForgetLocallyGeneratedEvent();
         }
         return true;
@@ -4433,7 +4444,7 @@ public class SyncMsgPresenceQuarkCrossing : SyncMsgOSDMapData
                         // Removing a client triggers OnRemovePresence. I should only remove the client from this actor, not propagate it.
                         pRegionContext.RememberLocallyGeneratedEvent(MType);
                         //pRegionContext.Scene.RemoveClient(m_presenceUUID, false);
-                        pRegionContext.Scene.IncomingCloseAgent(m_presenceUUID, true);
+                        pRegionContext.Scene.CloseAgent(m_presenceUUID, true);
                         pRegionContext.ForgetLocallyGeneratedEvent();
                     }
                     catch (Exception e)
