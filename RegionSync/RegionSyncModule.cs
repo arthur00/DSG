@@ -1385,42 +1385,38 @@ namespace DSG.RegionSync
         //May need a better method for managing the outgoing messages (i.e. prioritizing object updates and events)
         public void SendSceneEventToRelevantSyncConnectors(string init_actorID, SyncMsg rsm, SceneObjectGroup sog, string quarkName)
         {
-            if (QuarkManager.IsInActiveQuark(quarkName))
+			//TODO: Incorporate quarks to events. Used to check for quarkName, but currently broadcasting all events to all actors
+
+            // Convert the message from data fields to a block of data to send.
+            rsm.ConvertOut(this);
+
+            //TODO: Figure out a better mechanism than broadcast for SceneEvents
+            List<SyncConnector> syncConnectors = new List<SyncConnector>(m_syncConnectors);
+			// List<SyncConnector> syncConnectors = GetSyncConnectorsForSceneEvents(init_actorID, rsm, sog, quarkName);
+
+            foreach (SyncConnector connector in syncConnectors)
             {
-                // Convert the message from data fields to a block of data to send.
-                rsm.ConvertOut(this);
-
-                //TODO: Figure out a better mechanism than broadcast for SceneEvents
-                List<SyncConnector> syncConnectors = new List<SyncConnector>(m_syncConnectors);
-                // List<SyncConnector> syncConnectors = GetSyncConnectorsForSceneEvents(init_actorID, rsm, sog, quarkName);
-
-
-                // m_log.DebugFormat("{0}: SendSyncEventToRelevantSyncConnectors. numConnectors={1}", LogHeader, syncConnectors.Count);
-
-                foreach (SyncConnector connector in syncConnectors)
+                /*
+                //special fix for R@I demo, need better optimization later
+                if ((rsm.Type == SymmetricSyncMessage.MsgType.PhysicsCollision || rsm.Type == SymmetricSyncMessage.MsgType.ScriptCollidingStart
+                    || rsm.Type == SymmetricSyncMessage.MsgType.ScriptColliding || rsm.Type == SymmetricSyncMessage.MsgType.ScriptCollidingEnd
+                    || rsm.Type == SymmetricSyncMessage.MsgType.ScriptLandCollidingStart
+                    || rsm.Type == SymmetricSyncMessage.MsgType.ScriptLandColliding || rsm.Type == SymmetricSyncMessage.MsgType.ScriptLandCollidingEnd)
+                    && IsSyncRelay)
                 {
-                    /*
-                    //special fix for R@I demo, need better optimization later
-                    if ((rsm.Type == SymmetricSyncMessage.MsgType.PhysicsCollision || rsm.Type == SymmetricSyncMessage.MsgType.ScriptCollidingStart
-                        || rsm.Type == SymmetricSyncMessage.MsgType.ScriptColliding || rsm.Type == SymmetricSyncMessage.MsgType.ScriptCollidingEnd
-                        || rsm.Type == SymmetricSyncMessage.MsgType.ScriptLandCollidingStart
-                        || rsm.Type == SymmetricSyncMessage.MsgType.ScriptLandColliding || rsm.Type == SymmetricSyncMessage.MsgType.ScriptLandCollidingEnd)
-                        && IsSyncRelay)
-                    {
-                        //for persistence actor, only forward collision events to script engines
-                        if (connector.OtherSideActorType == ScriptEngineSyncModule.ActorTypeString)
-                        {
-                            lock (m_stats) m_statEventOut++;
-                            connector.Send(rsm);
-                        }
-                    }
-                    else
-                     * */
+                    //for persistence actor, only forward collision events to script engines
+                    if (connector.OtherSideActorType == ScriptEngineSyncModule.ActorTypeString)
                     {
                         lock (m_stats) m_statEventOut++;
-                        DetailedUpdateWrite("SndEventtt", sog == null ? m_zeroUUID : sog.UUID.ToString(), 0, rsm.MType.ToString(), connector.otherSideActorID, rsm.DataLength);
-                        connector.ImmediateOutgoingMsg(rsm);
+                        connector.Send(rsm);
                     }
+                }
+                else
+                 * */
+                {
+                    lock (m_stats) m_statEventOut++;
+                    DetailedUpdateWrite("SndEventtt", sog == null ? m_zeroUUID : sog.UUID.ToString(), 0, rsm.MType.ToString(), connector.otherSideActorID, rsm.DataLength);
+                    connector.ImmediateOutgoingMsg(rsm);
                 }
             }
         }
