@@ -2680,8 +2680,9 @@ namespace DSG.RegionSync
                 // if this is a relay node, forward the message
                 if (pRegionContext.IsSyncRelay)
                 {
-                    if (QuarkName == null)
-                        m_log.WarnFormat("{0}: Quark name is null. Event is being forwarded to all actors",LogHeader);
+                    // Currently being forwarded to all actors.
+                    //if (QuarkName == null)
+                    //    m_log.WarnFormat("{0}: Quark name is null. Event is being forwarded to all actors",LogHeader);
                     pRegionContext.SendSceneEventToRelevantSyncConnectors(ConnectorContext.otherSideActorID, this, null, QuarkName);
                 }
                 ret = true;
