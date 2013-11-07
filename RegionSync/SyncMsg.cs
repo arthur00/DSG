@@ -1686,7 +1686,7 @@ namespace DSG.RegionSync
             IRegionArchiverModule archiver = pRegionContext.Scene.RequestModuleInterface<IRegionArchiverModule>();
             // Despite what the event OnOarFileLoaded suggests, DeArchiving is monothreaded method, so RememberLocallyGenerated will work
             pRegionContext.RememberLocallyGeneratedEvent(MType, m_timestamp);
-            archiver.DearchiveRegion(ms, m_merge, true, new Guid());
+            archiver.DearchiveRegion(ms, m_merge, true, new Guid(),false);
             return true;
         }
         public override bool ConvertOut(RegionSyncModule pRegionContext)
