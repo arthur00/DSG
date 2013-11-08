@@ -2812,8 +2812,11 @@ namespace DSG.RegionSync
                 AgentID = DataMap["agentID"].AsUUID();
                 Uuid = DataMap["uuid"].AsUUID();
                 ItemID = DataMap["itemID"].AsUUID();
+                // TODO: Currently broadcasting events, until quark solution is defined.
+                /*
                 if (pRegionContext.IsSyncRelay)
                     QuarkName = pRegionContext.InfoManager.GetSyncInfo(Uuid).CurQuark.QuarkName;
+                */
                 UpdatedProperties = SyncInfoBase.DecodeSyncedProperties(DataMap);
                 ret = true;
             }
@@ -2896,6 +2899,8 @@ namespace DSG.RegionSync
                 AgentID = DataMap["agentID"].AsUUID();
                 ItemID = DataMap["itemID"].AsUUID();
                 PrimID = DataMap["primID"].AsUUID();
+                // TODO: Currently broadcasting events, until quark solution is defined.
+                /*
                 if (pRegionContext.IsSyncRelay && PrimID != UUID.Zero)
                 {
                     try
@@ -2907,6 +2912,7 @@ namespace DSG.RegionSync
                         m_log.WarnFormat("{0}: Could not retrieve prim SyncInfo.",LogHeader);
                     }
                 }
+                */
                 IsRunning = DataMap["running"].AsBoolean();
                 AssetID = DataMap["assetID"].AsUUID();
                 ret = true;
@@ -2992,8 +2998,11 @@ namespace DSG.RegionSync
             {
                 ItemID = DataMap["itemID"].AsUUID();
                 PrimID = DataMap["primID"].AsUUID();
+                // TODO: Currently broadcasting events, until quark solution is defined.
+                /*
                 if (pRegionContext.IsSyncRelay)
                     QuarkName = pRegionContext.InfoManager.GetSyncInfo(PrimID).CurQuark.QuarkName;
+                */
                 ret = true;
             }
             return ret;
@@ -3052,8 +3061,11 @@ namespace DSG.RegionSync
             if (base.ConvertIn(pRegionContext))
             {
                 ChatMessage = PrepareOnChatArgs(DataMap, pRegionContext);
+                //TODO: Currently broadcasting events until quark solution is defined.
+                /*
                 if (pRegionContext.IsSyncRelay)
                     QuarkName = SyncQuark.GetQuarkNameByPosition(ChatMessage.Position);
+                */
                 ret = true;
             }
             return ret;
@@ -3106,8 +3118,11 @@ namespace DSG.RegionSync
             if (base.ConvertIn(pRegionContext))
             {
                 ChatMessage = PrepareOnChatArgs(DataMap, pRegionContext);
+                //TODO: Currently broadcasting events, until quark solution is defined
+                /*
                 if (pRegionContext.IsSyncRelay)
                     QuarkName = SyncQuark.GetQuarkNameByPosition(ChatMessage.Position);
+                */
                 ret = true;
             }
             return ret;
@@ -3159,8 +3174,11 @@ namespace DSG.RegionSync
             if (base.ConvertIn(pRegionContext))
             {
                 ChatMessage = PrepareOnChatArgs(DataMap, pRegionContext);
+                // TODO: Currently broadcasting events, until quark solution is defined.
+                /*
                 if (pRegionContext.IsSyncRelay)
                     QuarkName = SyncQuark.GetQuarkNameByPosition(ChatMessage.Position);
+                */
                 ret = true;
             }
             return ret;
@@ -3221,8 +3239,11 @@ namespace DSG.RegionSync
             {
                 AgentID = DataMap["agentID"].AsUUID();
                 PrimID = DataMap["primID"].AsUUID();
+                // TODO: Currently broadcasting events, until quark solution is defined.
+                /*
                 if (pRegionContext.IsSyncRelay)
                     QuarkName = pRegionContext.InfoManager.GetSyncInfo(PrimID).CurQuark.QuarkName;
+                */
                 OriginalPrimID = DataMap["originalPrimID"].AsUUID();
                 OffsetPos = DataMap["offsetPos"].AsVector3();
                 SurfaceArgs = new SurfaceTouchEventArgs();
@@ -3416,8 +3437,11 @@ namespace DSG.RegionSync
                 PrimID = DataMap["primID"].AsUUID();
                 ItemID = DataMap["itemID"].AsUUID();
                 AvatarID = DataMap["avatarID"].AsUUID();
+                // TODO: Currently broadcasting events, until quark solution is defined.
+                /*
                 if (pRegionContext.IsSyncRelay)
                     QuarkName = pRegionContext.InfoManager.GetSyncInfo(AvatarID).CurQuark.QuarkName;
+                */
                 ret = true;
             }
             return ret;
@@ -3498,8 +3522,18 @@ namespace DSG.RegionSync
                     //                LogHeader, MType.ToString(), CollideeUUID, pRegionContext.SyncID);
                     return false;
                 }
+                // TODO: Currently broadcasting events until quark solutuion for events is done.
+                /*
                 if (pRegionContext.IsSyncRelay)
+                try
+                {
                     QuarkName = pRegionContext.InfoManager.GetSyncInfo(CollideeUUID).CurQuark.QuarkName;
+                }
+                catch
+                {
+                    m_log.WarnFormat("{0}: Could not retrieve quark name in SyncMsgEventCollision.",LogHeader);
+                }
+                */
                 
                 CollideeID = collisionPart.LocalId;
 
