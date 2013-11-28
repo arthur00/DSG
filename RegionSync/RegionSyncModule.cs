@@ -2618,6 +2618,9 @@ namespace DSG.RegionSync
 
         private void OnLocalChatFromClient(Object sender, OSChatMessage chat)
         {
+            if (IsLocallyGeneratedEvent(SyncMsg.MsgType.ChatFromClient, chat))
+                return;
+
             if (chat.Sender is RegionSyncAvatar)
                 return;
             //if (IsLocallyGeneratedEvent(SymmetricSyncMessage.MsgType.ChatFromClient, sender, chat))

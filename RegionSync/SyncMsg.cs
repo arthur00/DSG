@@ -3078,7 +3078,13 @@ namespace DSG.RegionSync
                 m_log.DebugFormat("{0} SyncMsgChatFromClient: {1} : {2}", LogHeader, ChatMessage.From, ChatMessage.Message);
                 if (ChatMessage.Sender is RegionSyncAvatar)
                     ((RegionSyncAvatar)ChatMessage.Sender).SyncChatFromClient(ChatMessage);
-                
+                else
+                {
+                    // With quarks, it is possible to receive messages from unknown clients. TODO: Fix events with quarks
+                    pRegionContext.RememberLocallyGeneratedEvent(MsgType.ChatFromClient, ChatMessage);
+                    pRegionContext.Scene.EventManager.TriggerOnChatFromClient(null, ChatMessage);
+                    pRegionContext.ForgetLocallyGeneratedEvent();
+                }
                 ret = true;
             }
             return ret;
