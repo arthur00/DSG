@@ -646,14 +646,9 @@ namespace DSG.RegionSync
             else
             {
                 // Add each SOP in SOG to SyncInfoManager
-                string quarkName = SyncQuark.GetQuarkNameByPosition(sog.RootPart.AbsolutePosition);
-                // If the new object was created outside my active quarks, it should remain local, and not be synced to other actors.
-                if (m_quarkManager == null || m_quarkManager.IsInActiveQuark(quarkName))
+                foreach (SceneObjectPart part in sog.Parts)
                 {
-                    foreach (SceneObjectPart part in sog.Parts)
-                    {
-                        m_SyncInfoManager.InsertSyncInfoLocal(part.UUID, RegionSyncModule.NowTicks(), SyncID);
-                    }
+                    m_SyncInfoManager.InsertSyncInfoLocal(part.UUID, RegionSyncModule.NowTicks(), SyncID);
                 }
 
                 if (IsSyncingWithOtherSyncNodes())
@@ -692,17 +687,12 @@ namespace DSG.RegionSync
                 {
                     // This part is reached only when an object is removed locally. If this was generated from incoming SyncRemovedObject,
                     // the SyncInfoExists would fail.
-                    string quarkName = SyncQuark.GetQuarkNameByPosition(sog.RootPart.AbsolutePosition);
-                    // If the object was not removed in my active quarks, it should remain a local action, otherwise sync the removal.
-                    if (m_quarkManager == null || m_quarkManager.IsInActiveQuark(quarkName))
+                    SyncMsgRemovedObject msg = new SyncMsgRemovedObject(this, sog.UUID, ActorID, false /*softDelete*/);
+                    if (msg.ConvertOut(this))
                     {
-                        SyncMsgRemovedObject msg = new SyncMsgRemovedObject(this, sog.UUID, ActorID, false /*softDelete*/);
-                        if (msg.ConvertOut(this))
-                        {
-                            //m_log.DebugFormat("{0}: Send DeleteObject out for {1},{2}", Scene.RegionInfo.RegionName, sog.Name, sog.UUID);
-                            SendSpecialUpdateToRelevantSyncConnectors(ActorID, msg);
-                            RemoveUpdatesFromSyncConnectors(sog.UUID);
-                        }
+                        //m_log.DebugFormat("{0}: Send DeleteObject out for {1},{2}", Scene.RegionInfo.RegionName, sog.Name, sog.UUID);
+                        SendSpecialUpdateToRelevantSyncConnectors(ActorID, msg);
+                        RemoveUpdatesFromSyncConnectors(sog.UUID);
                     }
                 }
                 else
