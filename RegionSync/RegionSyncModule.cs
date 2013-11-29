@@ -660,7 +660,7 @@ namespace DSG.RegionSync
                 {
                     SyncMsgNewObject msg = new SyncMsgNewObject(this, sog);
                     // m_log.DebugFormat("{0}: Send NewObject message for {1} ({2})", LogHeader, sog.Name, sog.UUID);
-                    SendSpecialUpdateToRelevantSyncConnectors(ActorID, msg, quarkName);
+                    SendSpecialUpdateToRelevantSyncConnectors(ActorID, msg);
                 }
             }
         }
@@ -700,7 +700,7 @@ namespace DSG.RegionSync
                         if (msg.ConvertOut(this))
                         {
                             //m_log.DebugFormat("{0}: Send DeleteObject out for {1},{2}", Scene.RegionInfo.RegionName, sog.Name, sog.UUID);
-                            SendSpecialUpdateToRelevantSyncConnectors(ActorID, msg, quarkName);
+                            SendSpecialUpdateToRelevantSyncConnectors(ActorID, msg);
                             RemoveUpdatesFromSyncConnectors(sog.UUID);
                         }
                     }
