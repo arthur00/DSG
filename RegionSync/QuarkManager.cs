@@ -705,13 +705,11 @@ namespace DSG.RegionSync
             {
                 syncMsgFull = new SyncMsgPrimQuarkCrossing(m_regionSyncModule, sop, updatedProperties, true);
                 syncMsgFull.ConvertOut(m_regionSyncModule);
-                m_regionSyncModule.SendSyncMessageTo(syncMsgFull, actorsNeedFull);
             }
             if (actorsNeedUpdate.Count > 0)
             {
                 syncMsgUpdate = new SyncMsgPrimQuarkCrossing(m_regionSyncModule, sop, updatedProperties, false);
                 syncMsgUpdate.ConvertOut(m_regionSyncModule);
-                m_regionSyncModule.SendSyncMessageTo(syncMsgUpdate, actorsNeedUpdate);
             }
 
             // if the prim is not in the quarks I manage, remove it from the scenegraph
@@ -734,6 +732,12 @@ namespace DSG.RegionSync
                     m_regionSyncModule.Scene.DeleteSceneObject(sog, false);
                 }
             }
+
+            if (syncMsgFull != null)
+                m_regionSyncModule.SendSyncMessageTo(syncMsgFull, actorsNeedFull);
+            if (syncMsgUpdate != null)
+                m_regionSyncModule.SendSyncMessageTo(syncMsgUpdate, actorsNeedUpdate);
+
             return true;
         }
 
