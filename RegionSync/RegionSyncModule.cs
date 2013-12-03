@@ -645,6 +645,7 @@ namespace DSG.RegionSync
             }
             else
             {
+                string quarkName = SyncQuark.GetQuarkNameByPosition(sog.AbsolutePosition);
                 // Add each SOP in SOG to SyncInfoManager
                 foreach (SceneObjectPart part in sog.Parts)
                 {
@@ -655,11 +656,11 @@ namespace DSG.RegionSync
                 {
                     SyncMsgNewObject msg = new SyncMsgNewObject(this, sog);
                     // m_log.DebugFormat("{0}: Send NewObject message for {1} ({2})", LogHeader, sog.Name, sog.UUID);
-                    SendSpecialUpdateToRelevantSyncConnectors(ActorID, msg);
+                    SendSpecialUpdateToRelevantSyncConnectors(ActorID, msg, quarkName);
                     msg.ConvertOut(this);
                 }
 
-                if (QuarkManager != null && !QuarkManager.IsInActiveQuark(SyncQuark.GetQuarkNameByPosition(sog.AbsolutePosition)))
+                if (QuarkManager != null && !QuarkManager.IsInActiveQuark(quarkName))
                 {
                     // Object was created outside of quark boundaries. Happens commonly on scripts.
                     // Action: Delete SyncInfo and object.
