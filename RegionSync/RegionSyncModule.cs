@@ -657,6 +657,20 @@ namespace DSG.RegionSync
                     // m_log.DebugFormat("{0}: Send NewObject message for {1} ({2})", LogHeader, sog.Name, sog.UUID);
                     SendSpecialUpdateToRelevantSyncConnectors(ActorID, msg);
                 }
+
+                if (!QuarkManager.IsInActiveQuark(SyncQuark.GetQuarkNameByPosition(sog.AbsolutePosition)))
+                {
+                    // Object was created outside of quark boundaries. Happens commonly on scripts.
+                    // Action: Delete SyncInfo and object.
+                    // Set locally generated event as quark prim crossing, so object removal is not propagated.
+                    RememberLocallyGeneratedEvent(SyncMsg.MsgType.QuarkPrimCrossing, sog.UUID);
+                    foreach (SceneObjectPart part in sog.Parts)
+                    {
+                        m_SyncInfoManager.RemoveSyncInfo(part.UUID);
+                        Scene.DeleteSceneObject(part.UUID);
+                    }
+                    ForgetLocallyGeneratedEvent();
+                }
             }
         }
 

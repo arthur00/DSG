@@ -448,7 +448,7 @@ namespace DSG.RegionSync
                     }
                     else
                     {
-                        // m_log.DebugFormat("{0} SyncMsgOSDMapData.ConvertIn: dir=in, no data", LogHeader);
+                        m_log.WarnFormat("{0} SyncMsgOSDMapData.ConvertIn: dir=in, no data", LogHeader);
                     }
                     break;
                 case Direction.Out:
