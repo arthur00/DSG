@@ -667,7 +667,7 @@ namespace DSG.RegionSync
                     foreach (SceneObjectPart part in sog.Parts)
                     {
                         m_SyncInfoManager.RemoveSyncInfo(part.UUID);
-                        Scene.DeleteSceneObject(part.UUID);
+                        Scene.DeleteSceneObject(part.UUID, false);
                     }
                     ForgetLocallyGeneratedEvent();
                 }
