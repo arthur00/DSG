@@ -656,6 +656,7 @@ namespace DSG.RegionSync
                     SyncMsgNewObject msg = new SyncMsgNewObject(this, sog);
                     // m_log.DebugFormat("{0}: Send NewObject message for {1} ({2})", LogHeader, sog.Name, sog.UUID);
                     SendSpecialUpdateToRelevantSyncConnectors(ActorID, msg);
+                    msg.ConvertOut(this);
                 }
 
                 if (QuarkManager != null && !QuarkManager.IsInActiveQuark(SyncQuark.GetQuarkNameByPosition(sog.AbsolutePosition)))
