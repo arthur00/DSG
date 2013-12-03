@@ -656,7 +656,9 @@ namespace DSG.RegionSync
                 {
                     SyncMsgNewObject msg = new SyncMsgNewObject(this, sog);
                     // m_log.DebugFormat("{0}: Send NewObject message for {1} ({2})", LogHeader, sog.Name, sog.UUID);
-                    SendSpecialUpdateToRelevantSyncConnectors(ActorID, msg, quarkName);
+                    //SendSpecialUpdateToRelevantSyncConnectors(ActorID, msg, quarkName);
+                    HashSet<SyncConnector> connectors = GetSyncConnectorsForUpdates(quarkName);
+                    SendSyncMessageTo(msg,connectors);
                     msg.ConvertOut(this);
                 }
 
@@ -1365,26 +1367,6 @@ namespace DSG.RegionSync
             foreach (SyncConnector connector in syncConnectors)
             {
                 connector.RemoveUpdate(uuid);
-            }
-        }
-
-        /// <summary>
-        /// Send special update. This version is used for Quark Crossings. There is no need to check if is an active quark.
-        /// 
-        /// 
-        /// </summary>
-        /// <param name="sog"></param>
-        /// <param name="newMsg"></param>
-        public void SendSpecialUpdateToRelevantSyncConnectors(string init_actorID, SyncMsg syncMsg, string prevQuark, string curQuark)
-        {
-            HashSet<SyncConnector> syncConnectors = GetSyncConnectorsForUpdates(prevQuark,curQuark);
-            foreach (SyncConnector connector in syncConnectors)
-            {
-                if (!connector.otherSideActorID.Equals(init_actorID) && QuarkManager.IsInActiveQuark(curQuark))
-                {
-                    // DetailedUpdateWrite(logReason, sendingUUID, 0, m_zeroUUID, connector.otherSideActorID, newMsg.DataLength);
-                    connector.ImmediateOutgoingMsg(syncMsg);
-                }
             }
         }
 
