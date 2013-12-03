@@ -658,7 +658,7 @@ namespace DSG.RegionSync
                     SendSpecialUpdateToRelevantSyncConnectors(ActorID, msg);
                 }
 
-                if (!QuarkManager.IsInActiveQuark(SyncQuark.GetQuarkNameByPosition(sog.AbsolutePosition)))
+                if (QuarkManager != null && !QuarkManager.IsInActiveQuark(SyncQuark.GetQuarkNameByPosition(sog.AbsolutePosition)))
                 {
                     // Object was created outside of quark boundaries. Happens commonly on scripts.
                     // Action: Delete SyncInfo and object.
