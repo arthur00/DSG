@@ -1403,9 +1403,12 @@ namespace DSG.RegionSync
                 else
                  * */
                 {
-                    lock (m_stats) m_statEventOut++;
-                    DetailedUpdateWrite("SndEventtt", sog == null ? m_zeroUUID : sog.UUID.ToString(), 0, rsm.MType.ToString(), connector.otherSideActorID, rsm.DataLength);
-                    connector.ImmediateOutgoingMsg(rsm);
+                    if (!connector.otherSideActorID.Equals(init_actorID))
+                    {
+                        lock (m_stats) m_statEventOut++;
+                        DetailedUpdateWrite("SndEventtt", sog == null ? m_zeroUUID : sog.UUID.ToString(), 0, rsm.MType.ToString(), connector.otherSideActorID, rsm.DataLength);
+                        connector.ImmediateOutgoingMsg(rsm);
+                    }
                 }
             }
         }
