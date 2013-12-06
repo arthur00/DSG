@@ -583,7 +583,10 @@ namespace DSG.RegionSync
                     // Someday see if a better design is possible for spacialy large linksets.
                     Vector3 sogPos = sog.RootPart.GroupPosition;
                     string currentQuarkName = SyncQuark.GetQuarkNameByPosition(sogPos);
-                    if (currentQuarkName != sib.CurQuark.QuarkName)
+                    // Note: The check for IsInactiveQuark is necessary, in the case where the object predicted to be moved into a new quark is not
+                    // an object in an active of this actor. E.g.: If a physics actor is receiving updates of an object in its passive quark, and 
+                    // that object moves to another quark.
+                    if (currentQuarkName != sib.CurQuark.QuarkName && IsInActiveQuark(sib.CurQuark.QuarkName))
                     {
                         sib.PrevQuark = sib.CurQuark;
                         sib.CurQuark = new SyncQuark(sogPos);
