@@ -479,11 +479,19 @@ namespace DSG.RegionSync
                         {
                             if (m_data == null)
                             {
-                                string s = OSDParser.SerializeJsonString(DataMap, true);
-                                m_data = System.Text.Encoding.ASCII.GetBytes(s);
-                                DataLength = m_data.Length;
-                                // m_log.DebugFormat("{0} SyncMsgOSDMapData.ConvertOut: building m_data, dir=out, typ={1}, len={2}",
-                                //                                    LogHeader, MType, DataLength);
+                                try
+                                {
+                                    string s = OSDParser.SerializeJsonString(DataMap, true);
+                                    m_data = System.Text.Encoding.ASCII.GetBytes(s);
+                                    DataLength = m_data.Length;
+                                    // m_log.DebugFormat("{0} SyncMsgOSDMapData.ConvertOut: building m_data, dir=out, typ={1}, len={2}",
+                                    //                                    LogHeader, MType, DataLength);
+                                }
+                                catch (Exception e)
+                                {
+                                    m_log.ErrorFormat("{0}: Failure parsing DataMap into JSON. Exception: {1}",LogHeader,e);
+                                    DataLength = 0;
+                                }
                             }
                         }
                         else
