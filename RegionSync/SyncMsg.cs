@@ -59,7 +59,6 @@ using OpenMetaverse;
 using OpenMetaverse.StructuredData;
 
 using log4net;
-using System.Collections;
 using System.Xml;
 using System.Drawing;
 
@@ -1983,7 +1982,7 @@ namespace DSG.RegionSync
                 else 
                 {
                     // ?? This is only for debugging, for now..
-                    m_log.WarnFormat("{0}: Got a RemoveObject for unexisting ID!",LogHeader);
+                    // m_log.WarnFormat("{0}: Got a RemoveObject for unexisting ID!",LogHeader);
                 }
             }
             return true;
@@ -4439,7 +4438,7 @@ namespace DSG.RegionSync
                     case 1: // current is not our quark and we know about the presence
                         // Remove the presence from the scenegraph
                         m_toRemove = true;
-                        m_log.WarnFormat("{0}: HandleQuarkCrossingSPFullUpdate: Case 1. Received from: {1}", LogHeader, ConnectorContext.otherSideActorID);
+                        //m_log.WarnFormat("{0}: HandleQuarkCrossingSPFullUpdate: Case 1. Received from: {1}", LogHeader, ConnectorContext.otherSideActorID);
                         break;
                     case 2:
                         // Do not know about this Scene Presence. Create it from fully encoded SP.
@@ -4475,7 +4474,7 @@ namespace DSG.RegionSync
                         {
                             m_log.ErrorFormat("{0}: Knew about the SP, but don't have SyncInfo", LogHeader);
                         }
-                        m_log.WarnFormat("{0}: HandleQuarkCrossingSPFullUpdate: Case 3. Received from: {1}", LogHeader, ConnectorContext.otherSideActorID);
+                        //m_log.WarnFormat("{0}: HandleQuarkCrossingSPFullUpdate: Case 3. Received from: {1}", LogHeader, ConnectorContext.otherSideActorID);
                         break;
 
                 }

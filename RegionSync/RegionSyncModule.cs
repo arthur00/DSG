@@ -655,11 +655,16 @@ namespace DSG.RegionSync
                 if (IsSyncingWithOtherSyncNodes())
                 {
                     SyncMsgNewObject msg = new SyncMsgNewObject(this, sog);
+                    msg.ConvertOut(this);
                     // m_log.DebugFormat("{0}: Send NewObject message for {1} ({2})", LogHeader, sog.Name, sog.UUID);
                     //SendSpecialUpdateToRelevantSyncConnectors(ActorID, msg, quarkName);
-                    HashSet<SyncConnector> connectors = GetSyncConnectorsForUpdates(quarkName);
-                    SendSyncMessageTo(msg,connectors);
-                    msg.ConvertOut(this);
+                    if (sog.UsesPhysics)
+                    {
+                        HashSet<SyncConnector> connectors = GetSyncConnectorsForUpdates(quarkName);
+                        SendSyncMessageTo(msg,connectors);
+                    }
+                    else
+                        SendSyncMessageAll(msg);
                 }
 
                 if (QuarkManager != null && !QuarkManager.IsInActiveQuark(quarkName))
@@ -710,7 +715,8 @@ namespace DSG.RegionSync
                     if (msg.ConvertOut(this))
                     {
                         //m_log.DebugFormat("{0}: Send DeleteObject out for {1},{2}", Scene.RegionInfo.RegionName, sog.Name, sog.UUID);
-                        SendSpecialUpdateToRelevantSyncConnectors(ActorID, msg);
+                        //SendSpecialUpdateToRelevantSyncConnectors(ActorID, msg);
+                        SendSyncMessageAll(msg);
                         RemoveUpdatesFromSyncConnectors(sog.UUID);
                     }
                 }
