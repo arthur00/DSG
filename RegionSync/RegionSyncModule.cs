@@ -3062,18 +3062,27 @@ namespace DSG.RegionSync
                                 if (!m_quarkManager.LeftQuarks.ContainsKey(uuid) || !m_quarkManager.LeftQuarks[uuid])
                                 {
                                     sib = m_SyncInfoManager.GetSyncInfo(uuid);
-                                    // Returns false if not crossing
-                                    if (!m_quarkManager.UpdateQuarkLocation(uuid, updatedProperties))
+                                    SceneObjectGroup sog = Scene.GetSceneObjectGroup(uuid);
+                                    // If object is not physical, send update to all actors
+                                    if (sog != null && !sog.UsesPhysics)
                                     {
-                                        // Quarks have not changed
-                                        syncConnectors = GetSyncConnectorsForUpdates(sib.CurQuark.QuarkName);
-                                        // m_log.WarnFormat("{0} SendUpdateToRelevantSyncConnectors: Sending update msg to {1} connectors", LogHeader, syncConnectors.Count);
+                                        syncConnectors = m_syncConnectors;
                                     }
                                     else
                                     {
-                                        // Crossed quarks. Do not send update, it will be embedded in the QuarkCrossing message.
-                                        // m_log.WarnFormat("{0}: Crossing from {1} to {2}", LogHeader, sib.PrevQuark.QuarkName, sib.CurQuark.QuarkName);
-                                        m_quarkManager.QuarkCrossingUpdate(sib, updatedProperties);
+                                        // Returns false if not crossing
+                                        if (!m_quarkManager.UpdateQuarkLocation(uuid, updatedProperties))
+                                        {
+                                            // Quarks have not changed
+                                            syncConnectors = GetSyncConnectorsForUpdates(sib.CurQuark.QuarkName);
+                                            // m_log.WarnFormat("{0} SendUpdateToRelevantSyncConnectors: Sending update msg to {1} connectors", LogHeader, syncConnectors.Count);
+                                        }
+                                        else
+                                        {
+                                            // Crossed quarks. Do not send update, it will be embedded in the QuarkCrossing message.
+                                            // m_log.WarnFormat("{0}: Crossing from {1} to {2}", LogHeader, sib.PrevQuark.QuarkName, sib.CurQuark.QuarkName);
+                                            m_quarkManager.QuarkCrossingUpdate(sib, updatedProperties);
+                                        }
                                     }
                                 }
                             }
