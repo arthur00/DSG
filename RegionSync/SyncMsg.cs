@@ -1760,7 +1760,7 @@ namespace DSG.RegionSync
                 
                 pRegionContext.Scene.ForEachSOG(delegate(SceneObjectGroup sog)
                 {
-                    if (allQuarks.Contains(new SyncQuark(sog.AbsolutePosition)))
+                    if (!sog.UsesPhysics || allQuarks.Contains(new SyncQuark(sog.AbsolutePosition)))
                     {
                         m_objects.Add(sog.UUID);
                     }
@@ -1768,7 +1768,7 @@ namespace DSG.RegionSync
             }
 
             // Reply back with all the relevant scene object groups in OAR format. This SyncMsg auto-sends itself back to the origin.
-            SyncMsgObjects syncMsg = new SyncMsgObjects(pRegionContext, m_objects, ConnectorContext, false);
+            new SyncMsgObjects(pRegionContext, m_objects, ConnectorContext, false);
             m_log.WarnFormat("{0}: Done sending objects", LogHeader);
             return true;
         }
