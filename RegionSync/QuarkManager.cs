@@ -1,7 +1,53 @@
-﻿using log4net;
+﻿/*
+ * -----------------------------------------------------------------
+ * Copyright (c) 2012 Intel Corporation
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *
+ *     * Redistributions in binary form must reproduce the above
+ *       copyright notice, this list of conditions and the following
+ *       disclaimer in the documentation and/or other materials provided
+ *       with the distribution.
+ *
+ *     * Neither the name of the Intel Corporation nor the names of its
+ *       contributors may be used to endorse or promote products derived
+ *       from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE INTEL OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * EXPORT LAWS: THIS LICENSE ADDS NO RESTRICTIONS TO THE EXPORT LAWS OF
+ * YOUR JURISDICTION. It is licensee's responsibility to comply with any
+ * export regulations applicable in licensee's jurisdiction. Under
+ * CURRENT (May 2000) U.S. export regulations this software is eligible
+ * for export from the U.S. and can be downloaded by or otherwise
+ * exported or reexported worldwide EXCEPT to U.S. embargoed destinations
+ * which include Cuba, Iraq, Libya, North Korea, Iran, Syria, Sudan,
+ * Afghanistan and any other country to which the U.S. has embargoed
+ * goods and services.
+ * -----------------------------------------------------------------
+ */
+
+using log4net;
 using Nini.Config;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using OpenMetaverse.StructuredData;
 using OpenMetaverse;
 using OpenSim.Region.Framework.Scenes;
@@ -16,7 +62,6 @@ namespace DSG.RegionSync
     public class QuarkPublisher
     {
         private SyncQuark m_quark;
-        private string m_quarkName;
 
         private HashSet<SyncConnector> m_passiveQuarkSubscribers = new HashSet<SyncConnector>();
         public HashSet<SyncConnector> PassiveSubscribers { get { return m_passiveQuarkSubscribers; } }
@@ -26,7 +71,6 @@ namespace DSG.RegionSync
 
         public QuarkPublisher(SyncQuark quark)
         {
-            m_quarkName = quark.QuarkName;
             m_quark = quark;
         }
 
@@ -36,6 +80,10 @@ namespace DSG.RegionSync
         /// <param name="connector"></param>
         public void AddPassiveSubscriber(SyncConnector connector) {
                 m_passiveQuarkSubscribers.Add(connector);
+        }
+
+        public SyncQuark GetQuark {
+            get { return m_quark; }
         }
 
         /// <summary>
@@ -102,6 +150,10 @@ namespace DSG.RegionSync
     public class QuarkManager
     {
         private static string LogHeader = "[QUARKMANAGER]";
+        // Number of times to retry to connect to root actor
+        private const int RETRIES = 40;
+        // Time to wait between each connection attempt to root actor, in ms
+        private const int WAIT_RETRY = 5000;
         
         // Parent address and port to connect to. Currently only one, TBD multiple parents
         private string m_parentAddress;
@@ -188,6 +240,11 @@ namespace DSG.RegionSync
             IConfig config = syncModule.SysConfig;
             m_regionSyncModule = syncModule;
             m_syncInfoManager = m_regionSyncModule.InfoManager;
+
+            // Stop backing up periodically, unless persistence actor
+            // TODO: Assuming root = persistence actor. Not necessarily true
+            if (!m_regionSyncModule.IsRoot)
+                m_regionSyncModule.Scene.PeriodicBackup = false;
             
             // Size of quarks
             m_quarkSizeX = config.GetInt("SyncQuarkSizeX", 256);
@@ -267,11 +324,24 @@ namespace DSG.RegionSync
             {
                 foreach (RegionSyncListenerInfo rsli in superSetQuarks)
                 {
-                    SyncConnector syncConnector = m_regionSyncModule.StartNewSyncConnector(rsli);
-                    if (syncConnector == null)
-                        m_log.ErrorFormat("{0}: Failed to connecto to parent sync {1}",LogHeader,rsli.ToString());
-                    else
-                        m_log.WarnFormat("{0}: Success creating a connection to parent: {1}",LogHeader,rsli.ToString());
+                    int retries = RETRIES;
+                    SyncConnector syncConnector;
+                    while (retries > 0)
+                    {
+                        // Starts a connector, connects to root, and stores connector in RegionSyncModule
+                        syncConnector = m_regionSyncModule.StartNewSyncConnector(rsli);
+                        if (syncConnector == null)
+                        {
+                            m_log.ErrorFormat("{0}: Failed to connecto to parent sync {1}. Retrying...",LogHeader,rsli.ToString());
+                            retries--;
+                            Thread.Sleep(WAIT_RETRY);
+                        }
+                        else
+                        {
+                            m_log.WarnFormat("{0}: Success creating a connection to parent: {1}",LogHeader,rsli.ToString());
+                            break;
+                        }
+                    }
                 }
 
                 if (!m_regionSyncModule.IsSyncingWithOtherSyncNodes())
@@ -493,6 +563,11 @@ namespace DSG.RegionSync
             return m_passiveQuarkSet.ContainsKey(quarkName);
         }
 
+        public bool IsInQuark(string quarkName)
+        {
+            return m_activeQuarkSet.ContainsKey(quarkName) || m_passiveQuarkSet.ContainsKey(quarkName);
+        }
+
         // If presence or prim of UUID syncObjectID is crossing boundaries, returns true. Otherwise, just updates the SyncInfo for the UUID.
         public bool UpdateQuarkLocation(UUID syncObjectID, HashSet<SyncableProperties.Type> updatedProperties)
         {
@@ -545,6 +620,8 @@ namespace DSG.RegionSync
                 // Note that all SOPs in a linkset are in the quark of the root SOP (ie, always using GroupPosition).
                 // Someday see if a better design is possible for spatially large linksets.
                 Vector3 spLoc = sp.AbsolutePosition;
+                if (sib.CurrentlySyncedProperties[SyncableProperties.Type.AbsolutePosition].LastUpdateSource == PropertyUpdateSource.BySync)
+                    return false;
                 // m_log.WarnFormat("{0}: Absolute Position after updated properties: {1}", LogHeader, spLoc);
                 string currentQuarkName = SyncQuark.GetQuarkNameByPosition(spLoc);
                 if (sib != null)
@@ -574,20 +651,24 @@ namespace DSG.RegionSync
         public bool UpdatePrimQuarkLocation(SceneObjectGroup sog, ref SyncInfoBase sib, HashSet<SyncableProperties.Type> updatedProperties)
         {
             bool ret = false;
-            if (updatedProperties.Contains(SyncableProperties.Type.AbsolutePosition) || updatedProperties.Contains(SyncableProperties.Type.Position)
-                || updatedProperties.Contains(SyncableProperties.Type.GroupPosition))
+            if (updatedProperties.Contains(SyncableProperties.Type.GroupPosition))
             {
+                if (sib.CurrentlySyncedProperties[SyncableProperties.Type.GroupPosition].LastUpdateSource == PropertyUpdateSource.BySync)
+                    return false;
+
                 if (sib != null)
                 {
                     // Note that all SOPs in a linkset are in the quark of the root SOP (ie, always using GroupPosition).
                     // Someday see if a better design is possible for spacialy large linksets.
                     Vector3 sogPos = sog.RootPart.GroupPosition;
                     string currentQuarkName = SyncQuark.GetQuarkNameByPosition(sogPos);
-                    if (currentQuarkName != sib.CurQuark.QuarkName)
+                    // Note: The check for IsInactiveQuark is necessary, in the case where the object predicted to be moved into a new quark is not
+                    // an object in an active of this actor. E.g.: If a physics actor is receiving updates of an object in its passive quark, and 
+                    // that object moves to another quark.
+                    if (currentQuarkName != sib.CurQuark.QuarkName && IsInActiveQuark(sib.CurQuark.QuarkName))
                     {
                         sib.PrevQuark = sib.CurQuark;
                         sib.CurQuark = new SyncQuark(sogPos);
-
                         // Inform SyncInfoBase to update the previous and current quark synced properties
                         long ts = RegionSyncModule.NowTicks();
                         HashSet <SyncableProperties.Type> quarkTypes = new HashSet<SyncableProperties.Type>();
@@ -692,7 +773,9 @@ namespace DSG.RegionSync
         {
             // If not in my active or passive quarks, remember so we can delete all reference to it from scene and sync info.
             bool leavingMyQuarks = !(IsInActiveQuark(sip.CurQuark.QuarkName) || IsInPassiveQuark(sip.CurQuark.QuarkName));
-            
+            if (leavingMyQuarks)
+                LeftQuarks[sop.ParentGroup.UUID] = true;
+
             HashSet<SyncConnector> actorsNeedFull = new HashSet<SyncConnector>();
             HashSet<SyncConnector> actorsNeedUpdate = new HashSet<SyncConnector>();
             // Which of my neighbors need the full prim, and which need only a simple update? If my neighbor is subscribed to both current quark and 
@@ -705,13 +788,11 @@ namespace DSG.RegionSync
             {
                 syncMsgFull = new SyncMsgPrimQuarkCrossing(m_regionSyncModule, sop, updatedProperties, true);
                 syncMsgFull.ConvertOut(m_regionSyncModule);
-                m_regionSyncModule.SendSyncMessageTo(syncMsgFull, actorsNeedFull);
             }
             if (actorsNeedUpdate.Count > 0)
             {
                 syncMsgUpdate = new SyncMsgPrimQuarkCrossing(m_regionSyncModule, sop, updatedProperties, false);
                 syncMsgUpdate.ConvertOut(m_regionSyncModule);
-                m_regionSyncModule.SendSyncMessageTo(syncMsgUpdate, actorsNeedUpdate);
             }
 
             // if the prim is not in the quarks I manage, remove it from the scenegraph
@@ -734,6 +815,12 @@ namespace DSG.RegionSync
                     m_regionSyncModule.Scene.DeleteSceneObject(sog, false);
                 }
             }
+
+            if (syncMsgFull != null)
+                m_regionSyncModule.SendSyncMessageTo(syncMsgFull, actorsNeedFull);
+            if (syncMsgUpdate != null)
+                m_regionSyncModule.SendSyncMessageTo(syncMsgUpdate, actorsNeedUpdate);
+
             return true;
         }
 
@@ -751,9 +838,9 @@ namespace DSG.RegionSync
             }
 
             if (m_quarkSubscriptions.TryGetValue(prevQuark.QuarkName, out prev))
-                full_iter.UnionWith(prev.ActiveSubscribers);
+                full_iter.UnionWith(prev.GetAllQuarkSubscribers());
             if (m_quarkSubscriptions.TryGetValue(curQuark.QuarkName, out cur))
-                full_iter.UnionWith(cur.ActiveSubscribers);
+                full_iter.UnionWith(cur.GetAllQuarkSubscribers());
 
             full.UnionWith(full_iter);
 

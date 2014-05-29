@@ -110,6 +110,9 @@ namespace DSG.RegionSync
         //the actorID of the other end of the connection
         public string otherSideActorID { get; set; }
 
+        //the actorID of the other end of the connection
+        public string otherSideSyncID { get; set; }
+
         //The region name of the other side of the connection
         public string otherSideRegionName { get; set; }
 

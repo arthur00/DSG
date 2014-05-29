@@ -237,8 +237,9 @@ namespace DSG.RegionSync
                     DebugLog.ErrorFormat("{0}: Could not create SyncInfo for syncID {1}", "[SYNC INFO MANAGER]", syncID);
                     return;
                 }
-                else if (UpdateInActiveQuark(sib))
-                    m_syncedUUIDs[uuid] = sib;
+                //else if (UpdateInActiveQuark(sib))
+                // Allow local insertions outside of quark. This will result in new object being sent to relevant connectors. 
+                m_syncedUUIDs[uuid] = sib;
             }
         }
 
